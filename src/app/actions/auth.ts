@@ -34,6 +34,19 @@ export const signInAction = async (formData: FormData) => {
   redirect("/");
 };
 
+export const googleSignInAction = async () => {
+  const response = await auth.api.signInSocial({
+    body: {
+      provider: "google",
+      callbackURL: "/",
+    },
+  });
+
+  if (response.url) {
+    redirect(response.url);
+  }
+};
+
 export const SignoutAction = async () => {
   await auth.api.signOut({
     headers: await headers(),
