@@ -51,5 +51,5 @@ export const SignoutAction = async () => {
   await auth.api.signOut({
     headers: await headers(),
   });
-  redirect("/");
+  redirect("/auth/signin");
 };
