@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
 export async function GET() {
@@ -15,15 +15,20 @@ export async function GET() {
     });
 
     if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { data, error } = await supabase
       .from("notes")
-      .select("*")
+      .select(
+        `
+  *,
+  folder:folders(
+    id,
+    name
+  )
+`,
+      )
       .eq("user_id", session.user.id)
       .order("created_at", { ascending: false });
 
@@ -35,7 +40,7 @@ export async function GET() {
 
     return NextResponse.json(
       { error: "Failed to fetch notes" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -47,20 +52,13 @@ export async function POST(req: Request) {
     });
 
     if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
-    const { title, content } = body;
-
+    const { title, content, folder_id } = body;
     if (!title) {
-      return NextResponse.json(
-        { error: "Title is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
     const { data, error } = await supabase
@@ -68,6 +66,7 @@ export async function POST(req: Request) {
       .insert({
         title,
         content,
+        folder_id,
         user_id: session.user.id,
       })
       .select()
@@ -81,7 +80,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { error: "Failed to create note" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
 async function getUser() {
@@ -16,30 +16,33 @@ async function getUser() {
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
+
+    console.log("PUT PARAMS:", params);
+
     const session = await getUser();
 
     if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
-    const { title, content } = body;
+
+    const { title, content, folder_id } = body;
 
     const { data, error } = await supabase
       .from("notes")
       .update({
         title,
         content,
-        updated_at: new Date(),
+        folder_id: folder_id || null,
+        updated_at: new Date().toISOString(),
       })
-      .eq("id", params.id)
-      .eq("user_id", session.user.id) // 🔒 security
+      .eq("id", id)
+      .eq("user_id", session.user.id)
       .select()
       .single();
 
@@ -49,24 +52,20 @@ export async function PUT(
   } catch (error) {
     console.error("UPDATE NOTE ERROR:", error);
 
-    return NextResponse.json(
-      { error: String(error) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
 
-
 export async function DELETE(
   req: Request,
-  context: any
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { params } = await context;
+    const { id } = await params;
+
+    console.log("DELETE ID:", id);
 
     const session = await getUser();
-
-    console.log("DELETE PARAMS:", params);
 
     if (!session?.user) {
       return NextResponse.json(
@@ -78,7 +77,7 @@ export async function DELETE(
     const { data, error } = await supabase
       .from("notes")
       .delete()
-      .eq("id", params.id)
+      .eq("id", id)
       .eq("user_id", session.user.id)
       .select();
 

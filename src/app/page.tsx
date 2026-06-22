@@ -1,14 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Search, X, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, X, Pencil, Trash2, Pin, PinOff } from "lucide-react";
 import { SignoutAction } from "./actions/auth";
 
 interface Note {
   id: string;
   title: string;
   content: string;
-  created_at?: string;
+  folder_id: string | null;
+  is_pinned: boolean;
+  folder?: Folder;
+}
+
+interface Folder {
+  id: string;
+  name: string;
 }
 
 export default function HomePage() {
@@ -19,6 +26,9 @@ export default function HomePage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [folderId, setFolderId] = useState("");
+  const [folderName, setFolderName] = useState("");
 
   useEffect(() => {
     fetchNotes();
@@ -41,6 +51,19 @@ export default function HomePage() {
       setLoading(false);
     }
   }
+
+  // F3TCH FOLDERS DATA
+  async function fetchFolders() {
+    const res = await fetch("/api/folders");
+    const data = await res.json();
+    setFolders(data);
+  }
+
+  useEffect(() => {
+    fetchNotes();
+    fetchFolders();
+  }, []);
+
 
   async function handleSubmit() {
     if (!title.trim()) return;
@@ -70,6 +93,7 @@ export default function HomePage() {
           body: JSON.stringify({
             title,
             content,
+            folder_id: folderId || null,
           }),
         });
 
@@ -108,14 +132,81 @@ export default function HomePage() {
   function handleEdit(note: Note) {
     setTitle(note.title);
     setContent(note.content);
+    setFolderId(note.folder_id || "");
     setEditingId(note.id);
     setShowForm(true);
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
   }
+
+  // FOLDERS CREATE
+  async function handleCreateFolder() {
+    if (!folderName.trim()) return;
+
+    try {
+      const res = await fetch("/api/folders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: folderName,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to create folder");
+      }
+
+      const newFolder = await res.json();
+
+      setFolders((prev) => [newFolder, ...prev]);
+      setFolderName("");
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  // HANDLE PIN
+  async function handlePin(note: Note) {
+    try {
+      const res = await fetch(`/api/notes/${note.id}/pin`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          is_pinned: !note.is_pinned,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to pin note");
+      }
+
+      await fetchNotes();
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+    // GROUP NOTES
+  const pinnedNotes = notes.filter((note) => note.is_pinned);
+
+  const unpinnedNotes = notes.filter((note) => !note.is_pinned);
+
+  const groupedNotes = unpinnedNotes.reduce(
+    (acc, note) => {
+      const folderName = note.folder?.name || "Uncategorized";
+
+      if (!acc[folderName]) {
+        acc[folderName] = [];
+      }
+
+      acc[folderName].push(note);
+
+      return acc;
+    },
+    {} as Record<string, Note[]>,
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -189,6 +280,20 @@ export default function HomePage() {
                 className="w-full p-4 rounded-lg border resize-none"
               />
 
+              <select
+                value={folderId}
+                onChange={(e) => setFolderId(e.target.value)}
+                className="w-full h-12 px-4 rounded-lg border"
+              >
+                <option value="">Select Folder</option>
+
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
+
               <button
                 onClick={handleSubmit}
                 className="h-11 px-6 rounded-lg bg-[#D4537E] text-white"
@@ -199,55 +304,139 @@ export default function HomePage() {
           </div>
         </div>
 
+        <div className="bg-white p-6 rounded-xl border mb-6">
+          <h2 className="font-semibold mb-4">Create Folder</h2>
+
+          <div className="flex gap-3">
+            <input
+              value={folderName}
+              onChange={(e) => setFolderName(e.target.value)}
+              placeholder="Folder name"
+              className="flex-1 h-12 px-4 border rounded-lg"
+            />
+
+            <button
+              onClick={handleCreateFolder}
+              className="px-5 bg-[#D4537E] text-white rounded-lg"
+            >
+              Create
+            </button>
+          </div>
+        </div>
+
+        {pinnedNotes.length > 0 && (
+          <div className="mb-10">
+            <h2 className="text-xl font-bold mb-4">📌 Pinned Notes</h2>
+
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {pinnedNotes.map((note) => (
+                <div
+                  key={note.id}
+                  className="bg-white rounded-2xl border border-yellow-400 p-5 h-64 shadow-sm flex flex-col"
+                >
+                  <div className="flex justify-between">
+                    <h3 className="font-semibold line-clamp-1">{note.title}</h3>
+
+                    <div className="flex gap-2">
+                      <button onClick={() => handlePin(note)}>
+                        <Pin className="size-4 fill-yellow-500 text-yellow-500" />
+                      </button>
+
+                      <button onClick={() => handleEdit(note)}>
+                        <Pencil className="size-4 text-gray-500" />
+                      </button>
+
+                      <button onClick={() => handleDelete(note.id)}>
+                        <Trash2 className="size-4 text-red-500" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="mt-3 text-sm text-gray-600 line-clamp-6">
+                    {note.content}
+                  </p>
+
+                  {/* category badge */}
+                  <span className="mt-auto text-xs text-gray-400">
+                    {note.folder?.name || "Uncategorized"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center py-20">Loading notes...</div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {notes.map((note) => (
-              <div
-                key={note.id}
-                className="bg-white rounded-2xl border border-[#D4537E] p-5 h-64 shadow-sm flex flex-col"
-              >
-                <div className="flex justify-between">
-                  <h3 className="font-semibold line-clamp-1">{note.title}</h3>
+          <div className="space-y-10">
+            {Object.entries(groupedNotes).map(([folderName, folderNotes]) => (
+              <div key={folderName}>
+                <h2 className="text-xl font-bold mb-4">📁 {folderName}</h2>
 
-                  <div className="flex gap-2">
-                    <button onClick={() => handleEdit(note)}>
-                      <Pencil className="size-4 text-gray-500" />
-                    </button>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                  {folderNotes.map((note) => (
+                    <div
+                      key={note.id}
+                      className="bg-white rounded-2xl border border-[#D4537E] p-5 h-64 shadow-sm flex flex-col"
+                    >
+                      <div className="flex justify-between">
+                        <h3 className="font-semibold line-clamp-1">
+                          {note.title}
+                        </h3>
 
-                    <button onClick={() => handleDelete(note.id)}>
-                      <Trash2 className="size-4 text-red-500" />
-                    </button>
-                  </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handlePin(note)}
+                            className="hover:scale-110 transition-transform"
+                          >
+                            {note.is_pinned ? (
+                              <Pin className="size-4 fill-yellow-500 text-yellow-500" />
+                            ) : (
+                              <PinOff className="size-4 text-gray-400" />
+                            )}
+                          </button>
+                          <button onClick={() => handleEdit(note)}>
+                            <Pencil className="size-4 text-gray-500" />
+                          </button>
+                          <button onClick={() => handleDelete(note.id)}>
+                            <Trash2 className="size-4 text-red-500" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="mt-3 text-sm text-gray-600 line-clamp-6">
+                        {note.content}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-
-                <p className="mt-3 text-sm text-gray-600 line-clamp-6">
-                  {note.content}
-                </p>
               </div>
             ))}
 
-            <button
-              onClick={() => {
-                setEditingId(null);
-                setTitle("");
-                setContent("");
-                setShowForm(true);
+            {/* Add Note Card */}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <button
+                onClick={() => {
+                  setEditingId(null);
+                  setTitle("");
+                  setContent("");
+                  setShowForm(true);
 
-                window.scrollTo({
-                  top: 0,
-                  behavior: "smooth",
-                });
-              }}
-              className="h-64 rounded-2xl border-2 border-dashed border-[#D4537E]/30 bg-white flex flex-col items-center justify-center hover:bg-[#D4537E]/5"
-            >
-              <div className="size-14 rounded-full bg-[#D4537E]/10 flex items-center justify-center">
-                <Plus className="size-7 text-[#D4537E]" />
-              </div>
+                  window.scrollTo({
+                    top: 0,
+                    behavior: "smooth",
+                  });
+                }}
+                className="h-64 rounded-2xl border-2 border-dashed border-[#D4537E]/30 bg-white flex flex-col items-center justify-center hover:bg-[#D4537E]/5"
+              >
+                <div className="size-14 rounded-full bg-[#D4537E]/10 flex items-center justify-center">
+                  <Plus className="size-7 text-[#D4537E]" />
+                </div>
 
-              <span className="mt-4 font-medium">Add Note</span>
-            </button>
+                <span className="mt-4 font-medium">Add Note</span>
+              </button>
+            </div>
           </div>
         )}
       </main>
