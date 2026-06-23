@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Search, X, Pencil, Trash2, Pin, PinOff } from "lucide-react";
-import { SignoutAction } from "./actions/auth";
+import { SignoutAction } from "../actions/auth";
 
 interface Note {
   id: string;
