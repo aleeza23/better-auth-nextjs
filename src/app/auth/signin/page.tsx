@@ -1,6 +1,18 @@
+'use client'
 import { googleSignInAction, signInAction } from "@/app/actions/auth";
+import { useState } from "react";
 
 export default function SignInPage() {
+    const [error, setError] = useState("");
+
+  async function handleSubmit(formData: FormData) {
+    const result = await signInAction(formData);
+
+    if (result?.error) {
+      setError(result.error);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
@@ -17,7 +29,8 @@ export default function SignInPage() {
           </div>
 
           {/* Login Form */}
-          <form action={signInAction} className="space-y-4">
+          <form        action={handleSubmit}
+ className="space-y-4">
             {/* Email */}
             <div className="space-y-1.5">
               <label
@@ -100,6 +113,12 @@ export default function SignInPage() {
               Sign in
             </button>
           </form>
+                {error && (
+        <pre className="mt-4 text-red-500 whitespace-pre-wrap">
+          {error}
+        </pre>
+      )}
+
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-5">

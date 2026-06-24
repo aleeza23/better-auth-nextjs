@@ -18,10 +18,12 @@ export const signInAction = async (formData: FormData) => {
 
     redirect("/");
   } catch (error: any) {
-    throw new Error(
-      error?.message ||
-      JSON.stringify(error)
-    );
+    return {
+      error:
+        error?.message ||
+        error?.body?.message ||
+        JSON.stringify(error, null, 2),
+    };
   }
 };
 
