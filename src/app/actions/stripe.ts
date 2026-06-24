@@ -1,22 +1,18 @@
-
 "use server";
 
 import { stripeClient } from "@/lib/utils";
 
-
-export async function createCheckoutSession(product: {
-  name: string;
-  price: number;
-}) {
+export async function createCheckoutSession(product: any) {
   const session = await stripeClient.checkout.sessions.create({
     mode: "payment",
-
+    ui_mode: "embedded_page",
     line_items: [
       {
         price_data: {
           currency: "usd",
           product_data: {
             name: product.name,
+            description: product.description,
           },
           unit_amount: Math.round(product.price * 100),
         },
@@ -24,11 +20,10 @@ export async function createCheckoutSession(product: {
       },
     ],
 
-    success_url: "http://localhost:3000/success",
-    cancel_url: "http://localhost:3000/cancel",
+    return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
   });
 
   return {
-    url: session.url!, // ✅ FIX HERE
+    clientSecret: session.client_secret,
   };
 }

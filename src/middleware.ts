@@ -2,7 +2,7 @@ import type { Session } from "better-auth/types";
 import { betterFetch } from "@better-fetch/fetch";
 import { NextResponse, type NextRequest } from "next/server";
 
-const publicRoutes = ["/auth/signin", "/auth/signup"];
+const publicRoutes = ["/auth/signin", "/auth/signup", "/success"];
 
 export default async function middleware(request: NextRequest) {
   const response = await fetch(

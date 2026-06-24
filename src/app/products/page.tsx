@@ -1,5 +1,3 @@
-import CheckoutButton from "@/components/CheckoutButton";
-
 
 const product = {
   id: "1",
@@ -15,7 +13,6 @@ export default function Page() {
       <p>{product.description}</p>
       <p className="mt-2 font-semibold">${product.price}</p>
 
-      <CheckoutButton product={product} />
     </div>
   );
 }
