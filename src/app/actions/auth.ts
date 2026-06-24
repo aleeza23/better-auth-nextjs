@@ -4,34 +4,48 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-export const signupAction = async (formData: FormData) => {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const name = formData.get("name") as string;
+export const signInAction = async (formData: FormData) => {
+  try {
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
 
-  await auth.api.signUpEmail({
-    body: {
-      email,
-      password,
-      name,
-    },
-  });
+    await auth.api.signInEmail({
+      body: {
+        email,
+        password,
+      },
+    });
 
-  redirect("/");
+    redirect("/");
+  } catch (error: any) {
+    throw new Error(
+      error?.message ||
+      JSON.stringify(error)
+    );
+  }
 };
 
-export const signInAction = async (formData: FormData) => {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+export const signupAction = async (formData: FormData) => {
+  try {
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const name = formData.get("name") as string;
 
-  await auth.api.signInEmail({
-    body: {
-      email,
-      password,
-    },
-  });
+    const result = await auth.api.signUpEmail({
+      body: {
+        email,
+        password,
+        name,
+      },
+    });
 
-  redirect("/");
+    console.log("SIGNUP SUCCESS:", result);
+
+    redirect("/");
+  } catch (error) {
+    console.error("SIGNUP ERROR:", error);
+    throw error;
+  }
 };
 
 export const googleSignInAction = async () => {
