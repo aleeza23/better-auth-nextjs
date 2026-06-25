@@ -64,7 +64,6 @@ export default function HomePage() {
     fetchFolders();
   }, []);
 
-
   async function handleSubmit() {
     if (!title.trim()) return;
 
@@ -78,6 +77,7 @@ export default function HomePage() {
           body: JSON.stringify({
             title,
             content,
+            folder_id: folderId || null,
           }),
         });
 
@@ -188,7 +188,7 @@ export default function HomePage() {
     }
   }
 
-    // GROUP NOTES
+  // GROUP NOTES
   const pinnedNotes = notes.filter((note) => note.is_pinned);
 
   const unpinnedNotes = notes.filter((note) => !note.is_pinned);
