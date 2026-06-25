@@ -39,9 +39,8 @@ export const signupAction = async (formData: FormData) => {
         password,
         name,
       },
+      headers: await headers(), // :white_check_mark: REQUIRED
     });
-
-    console.log("SIGNUP SUCCESS:", result);
 
     redirect("/");
   } catch (error) {
